@@ -1,0 +1,45 @@
+name: Deploy to Yandex Object Storage
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: yandex-object-storage
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04-arm
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.YC_STATIC_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.YC_STATIC_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ru-central1
+      AWS_EC2_METADATA_DISABLED: "true"
+      YC_BUCKET: vershina58.ru
+      YC_ENDPOINT: https://storage.yandexcloud.net
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - name: Upload site
+        run: aws s3 sync dist/ "s3://${YC_BUCKET}" --delete --endpoint-url "$YC_ENDPOINT" --only-show-errors
+      - name: Refresh HTML and service files without browser caching
+        run: |
+          find dist -type f \( -name '*.html' -o -name 'metrika.js' -o -name 'robots.txt' -o -name 'sitemap.xml' -o -name '*.webmanifest' \) -print0 | while IFS= read -r -d '' file; do
+            case "$file" in
+              *.html) type='text/html; charset=utf-8' ;;
+              *.js) type='application/javascript; charset=utf-8' ;;
+              *.xml) type='application/xml; charset=utf-8' ;;
+              *.webmanifest) type='application/manifest+json' ;;
+              *) type='text/plain; charset=utf-8' ;;
+            esac
+            aws s3 cp "$file" "s3://${YC_BUCKET}/${file#dist/}" --cache-control 'no-cache, no-store, must-revalidate' --content-type "$type" --endpoint-url "$YC_ENDPOINT" --only-show-errors
+          done
