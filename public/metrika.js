@@ -1,5 +1,5 @@
 (function () {
-  var id = 113772573; // Dedicated city counter, dima.radzun.
+  var id = 114112568; // Dedicated Penza counter, dima.radzun.
   if (!id) return;
   window.ym = window.ym || function () { (window.ym.a = window.ym.a || []).push(arguments); };
   window.ym.l = Date.now();

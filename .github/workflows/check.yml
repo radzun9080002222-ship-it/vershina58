@@ -1,4 +1,4 @@
-name: Check Ставрополь release
+name: Check Пенза release
 on:
   push:
     branches: [main]
